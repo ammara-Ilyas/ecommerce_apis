@@ -1,0 +1,199 @@
+import Product from "../../models/Product.js";
+import { v2 as cloudinary } from "cloudinary";
+import fs from "fs";
+
+export const handleCreateProduct = async (req, res) => {
+  const {
+    product,
+    description,
+    newPrice,
+    oldPrice,
+    category,
+    subCategory,
+    weight,
+    ram,
+    size,
+    brand,
+    stock,
+    discount,
+    rating,
+    location,
+  } = req.body;
+  console.log("info", req.body);
+
+  try {
+    let imageUrls = [];
+
+    // Upload images to Cloudinary if provided
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "products", // you can change folder if needed
+        });
+        imageUrls.push(result.secure_url);
+        // After uploading, remove local file
+        fs.unlinkSync(file.path);
+      }
+    } else {
+      // Default dummy image if no file uploaded
+      imageUrls.push("/public/uploads/dummy.png");
+    }
+    console.log("images", imageUrls);
+
+    // Create new product
+    const newProduct = await Product({
+      product,
+      description,
+      newPrice,
+      oldPrice,
+      category,
+      subCategory,
+      weight,
+      ram,
+      size,
+      brand,
+      stock,
+      discount,
+      rating,
+      location,
+      images: imageUrls,
+    });
+
+    await newProduct.save();
+
+    return res.status(201).json({
+      message: "Product created successfully",
+      product: newProduct,
+    });
+  } catch (error) {
+    console.error("Error while creating product", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const handleGetProducts = async (req, res) => {
+  try {
+    const products = await Product.find({}).populate([
+      { path: "category" },
+      { path: "subCategory" },
+      { path: "weight" },
+      { path: "size" },
+      { path: "ram" },
+    ]);
+
+    return res.json({
+      message: "Products fetched successfully",
+      products: products,
+    });
+  } catch (error) {
+    console.log("Error while fetching products", error);
+    res.status(500).json({
+      message: "Failed to fetch products",
+      error: error.message,
+    });
+  }
+};
+
+export const handleUpdateProduct = async (req, res) => {
+  const { id } = req.params;
+  const {
+    product,
+    description,
+    newPrice,
+    oldPrice,
+    category,
+    subCategory,
+    weight,
+    ram,
+    size,
+    brand,
+    stock,
+    discount,
+    rating,
+    location,
+  } = req.body;
+
+  try {
+    let imageUrls = [];
+
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "products",
+        });
+        imageUrls.push(result.secure_url);
+        fs.unlinkSync(file.path);
+      }
+    }
+
+    const updatedData = {
+      product,
+      description,
+      newPrice,
+      oldPrice,
+      category,
+      subCategory,
+      weight,
+      ram,
+      size,
+      brand,
+      stock,
+      discount,
+      rating,
+      location,
+    };
+
+    if (imageUrls.length > 0) {
+      updatedData.images = imageUrls;
+    }
+
+    const updatedProduct = await Product.findByIdAndUpdate(id, updatedData, {
+      new: true,
+    });
+
+    if (!updatedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    return res.status(200).json({
+      message: "Product updated successfully",
+      product: updatedProduct,
+    });
+  } catch (error) {
+    console.error("Error updating product", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const handleDeleteProduct = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deletedProduct = await Product.findByIdAndDelete(id);
+    if (!deletedProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    return res
+      .status(200)
+      .json({
+        message: "Product deleted successfully",
+        deltedProduct: deletedProduct,
+      });
+  } catch (error) {
+    console.error("Error deleting product", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const handleGetSingleProduct = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    return res.status(200).json({ product });
+  } catch (error) {
+    console.error("Error fetching product", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
