@@ -73,3 +73,28 @@ export const handleDeleteSize = async (req, res) => {
     return res.json({ message: "Internal Server Error" });
   }
 };
+
+export const handleDeleteMultipleSizes = async (req, res) => {
+  try {
+    console.log("body", req.body);
+
+    const { ids } = req.body;
+    console.log("id", ids);
+
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: "Invalid or missing 'id' array" });
+    }
+
+    const result = await Size.deleteMany({
+      _id: { $in: ids },
+    });
+
+    res.status(200).json({
+      message: "Items deleted successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting Sizes:", error);
+    res.status(500).json({ error: error.message });
+  }
+};

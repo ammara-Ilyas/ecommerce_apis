@@ -98,3 +98,28 @@ export const handledeleteSubCategory = async (req, res) => {
     return res.status(400).json({ message: "Internal Server Error" });
   }
 };
+
+export const handleDeleteMultipleSubCategorys = async (req, res) => {
+  try {
+    console.log("body", req.body);
+
+    const { ids } = req.body;
+    console.log("id", ids);
+
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: "Invalid or missing 'id' array" });
+    }
+
+    const result = await SubCategory.deleteMany({
+      _id: { $in: ids },
+    });
+
+    res.status(200).json({
+      message: "Items deleted successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting SubCategorys:", error);
+    res.status(500).json({ error: error.message });
+  }
+};

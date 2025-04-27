@@ -172,12 +172,10 @@ export const handleDeleteProduct = async (req, res) => {
     if (!deletedProduct) {
       return res.status(404).json({ message: "Product not found" });
     }
-    return res
-      .status(200)
-      .json({
-        message: "Product deleted successfully",
-        deltedProduct: deletedProduct,
-      });
+    return res.status(200).json({
+      message: "Product deleted successfully",
+      deltedProduct: deletedProduct,
+    });
   } catch (error) {
     console.error("Error deleting product", error);
     return res.status(500).json({ message: "Internal Server Error" });
@@ -195,5 +193,30 @@ export const handleGetSingleProduct = async (req, res) => {
   } catch (error) {
     console.error("Error fetching product", error);
     return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const handleDeleteMultipleProducts = async (req, res) => {
+  try {
+    console.log("body", req.body);
+
+    const { ids } = req.body;
+    console.log("id", ids);
+
+    if (!ids || !Array.isArray(ids)) {
+      return res.status(400).json({ message: "Invalid or missing 'id' array" });
+    }
+
+    const result = await Product.deleteMany({
+      _id: { $in: ids },
+    });
+
+    res.status(200).json({
+      message: "Items deleted successfully",
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("Error deleting products:", error);
+    res.status(500).json({ error: error.message });
   }
 };

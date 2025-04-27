@@ -26,7 +26,7 @@ export const sendVerificationEamil = async (email, verificationCode, name) => {
 export const senWelcomeEmail = async (email, name) => {
   try {
     const response = await transporter.sendMail({
-      from: '"Zahid" <zahidtime313@gmail.com>',
+      from: '"Ammara" <ammarailyas361@gmail.com>',
 
       to: email, // list of receivers
       subject: "Welcome Email", // Subject line
