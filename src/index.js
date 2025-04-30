@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import connectDB from "./db.js";
-import router from "../routes/user.routes.js";
 import cate_router from "../routes/category.routes.js";
 import sub_cate_router from "../routes/subcategory.routes.js";
 import banner_router from "../routes/banner.routes.js";
@@ -10,7 +9,9 @@ import weight_router from "../routes/weight.routes.js";
 import ram_router from "../routes/ram.routes.js";
 import size_router from "../routes/size.routes.js";
 import product_router from "../routes/product.routes.js";
+import user_router from "../routes/user.routes.js";
 import connectCloudinary from "../config/cloudinary.js";
+
 const app = express();
 
 const corsOptions = {
@@ -32,7 +33,7 @@ connectDB(url);
 
 connectCloudinary();
 
-app.use("/api/user", router);
+app.use("/api/auth", user_router);
 app.use("/api/", cate_router);
 app.use("/api/", sub_cate_router);
 app.use("/api/", banner_router);

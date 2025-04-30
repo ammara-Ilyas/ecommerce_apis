@@ -1,62 +1,129 @@
 import User from "../models/User.js";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import transporter from "../libs/nodemailer.js";
-import { sendVerificationEamil } from "../libs/Emails.js";
-dotenv.config();
-export const handleRegister = async (req, res) => {
-  const { name, email, password, role } = req.body;
+import { sendOTPEmail } from "../libs/nodemailer.js";
+export const auth = async (req, res) => {
+  console.log("auth");
+  return res.json({ message: "welcome to signup method" });
+};
+export const signup = async (req, res) => {
+  console.log("body", req.body);
 
-  const userExist = await User.findOne({ email });
-  if (userExist) {
+  const { name, email, password } = req.body;
+  const userExists = await User.findOne({ email });
+  if (userExists)
     return res.status(400).json({ message: "User already exists" });
-  }
-
-  const salt = await bcrypt.genSalt(10);
-  const hashedPassword = await bcrypt.hash(password, salt);
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const hashed = await bcrypt.hash(password, 12);
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   try {
-    let newUser = await User.create({
+    const user = await User.create({
       name,
       email,
-      password: hashedPassword,
-      role,
+      password: hashed,
+      otp,
+      otpExpiry: Date.now() + 600000,
     });
-    sendVerificationEamil(email, code, name);
-    return res
-      .status(201)
-      .json({ message: "User successfully created", user: newUser });
+    console.log("otp", otp);
+    console.log(name, email);
+
+    await sendOTPEmail(user.name, user.email, `<h3>OTP: ${otp}</h3>`);
+    res.json({ message: "OTP sent to email", user: user });
   } catch (error) {
-    console.error("Error creating user:", error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    console.log("error", error);
+
+    res.json({ message: "internal sever error", error: error });
   }
 };
 
-export const handleLogin = async (req, res) => {
-  const { email, password } = req.body;
-  const userExist = await User.findOne({ email });
+export const verifyOTP = async (req, res) => {
+  const { email, otp } = req.body;
+  const user = await User.findOne({ email });
+  if (!user || user.otp !== otp || user.otpExpiry < Date.now())
+    return res.status(400).json({ message: "Invalid or expired OTP" });
+  user.isVerified = true;
+  user.otp = null;
+  await user.save();
+  res.json({ message: "Verified" });
+};
 
-  try {
-    if (!userExist) {
-      return res.status(400).json({ message: "User does not existS" });
-    }
+export const resendOTP = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
 
-    const isMatch = await bcrypt.compare(password, userExist.password);
-
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid Credetials" });
-    }
-    console.log("token secret key", process.env.SECRET_KEY);
-
-    const token = jwt.sign({ userId: userExist._id }, process.env.SECRET_KEY, {
-      expiresIn: "1h",
-    });
-    // res.status(200).json({ token });
-    return res
-      .status(200)
-      .json({ message: "User login successful", token: token });
-  } catch (error) {
-    console.error("Error logging in user", error);
+  if (!user) {
+    return res.status(400).json({ message: "User not found" });
   }
+
+  // Regenerate OTP and update expiry
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.otp = otp;
+  user.otpExpiry = Date.now() + 600000; // Reset OTP expiry to 10 minutes
+
+  await user.save();
+
+  // Send the new OTP
+  await sendOTPEmail(user.name, email, otp);
+  res.json({ message: "OTP resent to email" });
+};
+
+export const login = async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+  if (!user || !user.isVerified)
+    return res.status(400).json({ message: "User not verified" });
+  const match = await bcrypt.compare(password, user.password);
+  if (!match) return res.status(400).json({ message: "Wrong password" });
+  const token = jwt.sign({ id: user._id }, "jwt_secret", { expiresIn: "7d" });
+  res.json({ token });
+};
+
+export const requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ message: "User not found" });
+  const token = jwt.sign({ id: user._id }, "reset_secret", {
+    expiresIn: "15m",
+  });
+  user.resetToken = token;
+  user.resetTokenExpiry = Date.now() + 900000;
+  await user.save();
+  await sendOTPEmail(
+    user.name,
+    email,
+    `<a href='http://localhost:3000/reset-password?token=${token}'>Reset Password</a>`
+  );
+  res.json({ message: "Reset email sent", user: user });
+};
+
+export const resetPassword = async (req, res) => {
+  const { token, newPassword } = req.body;
+  try {
+    const decoded = jwt.verify(token, "reset_secret");
+    const user = await User.findById(decoded.id);
+    if (
+      !user ||
+      user.resetToken !== token ||
+      user.resetTokenExpiry < Date.now()
+    )
+      return res.status(400).json({ message: "Invalid or expired token" });
+    user.password = await bcrypt.hash(newPassword, 12);
+    user.resetToken = null;
+    await user.save();
+    res.json({ message: "Password reset" });
+  } catch {
+    res.status(400).json({ message: "Invalid token" });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const token = req.headers.authorization?.split(" ")[1];
+  const { id } = jwt.verify(token, "jwt_secret");
+  const user = await User.findById(id);
+  const match = await bcrypt.compare(currentPassword, user.password);
+  if (!match)
+    return res.status(400).json({ message: "Wrong current password" });
+  user.password = await bcrypt.hash(newPassword, 12);
+  await user.save();
+  res.json({ message: "Password changed" });
 };
