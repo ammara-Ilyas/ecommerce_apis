@@ -9,7 +9,7 @@ export const handleCreatRam = async (req, res) => {
     });
 
     await newRam.save();
-    return res.json({
+    return res.status(200).json({
       message: "Ram Created successfully",
       ram: newRam,
     });
@@ -22,7 +22,7 @@ export const handleCreatRam = async (req, res) => {
 export const handleGetRams = async (req, res) => {
   try {
     const rams = await Ram.find({});
-    return res.json({
+    return res.status(200).json({
       message: "Ram fetched successfully",
       rams: rams,
     });
@@ -47,7 +47,7 @@ export const handleUpdateRam = async (req, res) => {
     if (!updatedRam) {
       return res.status(404).json({ message: "Ram not found" });
     }
-    return res.json({
+    return res.status(200).json({
       message: "Ram updated successfully",
       ram: updatedRam,
     });
@@ -64,7 +64,7 @@ export const handledeleteRam = async (req, res) => {
     if (!deleteRam) {
       return res.status(404).json({ message: "Ram not found" });
     }
-    return res.json({
+    return res.status(200).json({
       message: "Ram deleted successfully",
       ram: deleteRam,
     });

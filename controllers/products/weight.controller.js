@@ -10,7 +10,7 @@ export const handleCreateWeight = async (req, res) => {
     });
 
     await newWeight.save();
-    return res.json({
+    return res.status(200).json({
       message: "Weight Created successfully",
       weight: newWeight,
     });
@@ -21,9 +21,13 @@ export const handleCreateWeight = async (req, res) => {
 };
 
 export const handleGetWeights = async (req, res) => {
+  console.log("fetching weight");
+
   try {
     const weights = await Weight.find({});
-    return res.json({
+    console.log("weihts", weights);
+
+    return res.status(200).json({
       message: "Weight fetched successfully",
       weights: weights,
     });
@@ -48,7 +52,7 @@ export const handleUpdateWeight = async (req, res) => {
     if (!updatedWeight) {
       return res.status(404).json({ message: "Weight not found" });
     }
-    return res.json({
+    return res.status(200).json({
       message: "Weight updated successfully",
       weight: updatedWeight,
     });
@@ -65,7 +69,7 @@ export const handledeleteWeight = async (req, res) => {
     if (!deleteWeight) {
       return res.status(404).json({ message: "Weight not found" });
     }
-    return res.json({
+    return res.status(200).json({
       message: "Weight deleted successfully",
       weight: deleteWeight,
     });

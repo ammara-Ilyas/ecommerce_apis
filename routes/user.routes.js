@@ -6,13 +6,13 @@ import {
   requestPasswordReset,
   resetPassword,
   changePassword,
-  auth,
   resendOTP,
+  getAllUsers,
 } from "../controllers/user.controller.js";
-const user_router = express.user_router();
+const user_router = express.Router();
 
 user_router.post("/signup", signup);
-user_router.get("/", auth);
+user_router.get("/users", getAllUsers);
 user_router.post("/verify-otp", verifyOTP);
 user_router.post("/login", login);
 user_router.post("/request-reset", requestPasswordReset);

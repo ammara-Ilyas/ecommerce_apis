@@ -3,7 +3,7 @@ import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
 
 export const handleCreateCategory = async (req, res) => {
-  const { name, color } = req.body;
+  const { name, color, subCategory } = req.body;
 
   const categoryExist = await Category.findOne({ name });
   if (categoryExist) {

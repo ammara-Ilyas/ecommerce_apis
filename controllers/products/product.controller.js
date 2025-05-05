@@ -1,5 +1,6 @@
 import Product from "../../models/Product.js";
 import { v2 as cloudinary } from "cloudinary";
+import Category from "../../models/Category.js";
 import fs from "fs";
 
 export const handleCreateProduct = async (req, res) => {
@@ -61,7 +62,7 @@ export const handleCreateProduct = async (req, res) => {
 
     await newProduct.save();
 
-    return res.status(201).json({
+    return res.status(200).json({
       message: "Product created successfully",
       product: newProduct,
     });
@@ -74,14 +75,14 @@ export const handleCreateProduct = async (req, res) => {
 export const handleGetProducts = async (req, res) => {
   try {
     const products = await Product.find({}).populate([
-      { path: "category" },
-      { path: "subCategory" },
       { path: "weight" },
       { path: "size" },
       { path: "ram" },
+      { path: "category" },
     ]);
+    // console.log("products", products);
 
-    return res.json({
+    return res.status(200).json({
       message: "Products fetched successfully",
       products: products,
     });

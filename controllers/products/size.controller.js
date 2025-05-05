@@ -9,7 +9,7 @@ export const handleCreateSize = async (req, res) => {
     });
 
     await newSize.save();
-    return res.json({
+    return res.status(200).json({
       message: "Size Created successfully",
       size: newSize,
     });
@@ -22,7 +22,7 @@ export const handleCreateSize = async (req, res) => {
 export const handleGetSizes = async (req, res) => {
   try {
     const sizes = await Size.find({});
-    return res.json({
+    return res.status(200).json({
       message: "Size fetched successfully",
       sizes: sizes,
     });
@@ -47,7 +47,7 @@ export const handleUpdateSize = async (req, res) => {
     if (!updatedsize) {
       return res.status(404).json({ message: "Size not found" });
     }
-    return res.json({
+    return res.status(200).json({
       message: "size updated successfully",
       size: updatedsize,
     });
@@ -64,7 +64,7 @@ export const handleDeleteSize = async (req, res) => {
     if (!deletesize) {
       return res.status(404).json({ message: "size not found" });
     }
-    return res.json({
+    return res.status(200).json({
       message: "Size deleted successfully",
       size: deletesize,
     });

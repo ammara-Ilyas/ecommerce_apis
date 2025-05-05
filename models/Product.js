@@ -13,10 +13,7 @@ const productModel = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
-  subCategory: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "SubCategory",
-  },
+
   newPrice: {
     type: Number,
     required: true,

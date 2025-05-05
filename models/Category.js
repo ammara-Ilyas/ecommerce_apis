@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { type } from "os";
 
 const categoryModel = new mongoose.Schema(
   {
@@ -9,6 +10,17 @@ const categoryModel = new mongoose.Schema(
     color: {
       type: String,
       required: true,
+    },
+    subCategory: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true,
+          },
+        },
+      ],
+      default: [],
     },
     image: {
       type: String,
