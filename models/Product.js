@@ -13,7 +13,9 @@ const productModel = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Category",
   },
-
+  subCategory: {
+    type: String,
+  },
   newPrice: {
     type: Number,
     required: true,

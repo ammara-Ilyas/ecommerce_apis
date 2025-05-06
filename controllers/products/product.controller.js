@@ -183,19 +183,19 @@ export const handleDeleteProduct = async (req, res) => {
   }
 };
 
-export const handleGetSingleProduct = async (req, res) => {
-  const { id } = req.params;
-  try {
-    const product = await Product.findById(id);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-    return res.status(200).json({ product });
-  } catch (error) {
-    console.error("Error fetching product", error);
-    return res.status(500).json({ message: "Internal Server Error" });
-  }
-};
+// export const handleGetSingleProduct = async (req, res) => {
+//   const { id } = req.params;
+//   try {
+//     const product = await Product.findById(id);
+//     if (!product) {
+//       return res.status(404).json({ message: "Product not found" });
+//     }
+//     return res.status(200).json({ product });
+//   } catch (error) {
+//     console.error("Error fetching product", error);
+//     return res.status(500).json({ message: "Internal Server Error" });
+//   }
+// };
 
 export const handleDeleteMultipleProducts = async (req, res) => {
   try {
@@ -219,5 +219,38 @@ export const handleDeleteMultipleProducts = async (req, res) => {
   } catch (error) {
     console.error("Error deleting products:", error);
     res.status(500).json({ error: error.message });
+  }
+};
+
+export const handleGetProductById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findById(id).populate([
+      { path: "weight" },
+      { path: "size" },
+      { path: "ram" },
+      { path: "category" },
+      { path: "subCategory" },
+    ]);
+
+    console.log("produt", product);
+
+    if (!product) {
+      return res.status(404).json({
+        message: "Product not found",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Product fetched successfully",
+      product: product,
+    });
+  } catch (error) {
+    console.log("Error while fetching product by ID", error);
+    res.status(500).json({
+      message: "Failed to fetch product",
+      error: error.message,
+    });
   }
 };
