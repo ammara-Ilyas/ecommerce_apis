@@ -18,7 +18,9 @@ export const handleCreateProduct = async (req, res) => {
     stock,
     discount,
     rating,
-    location,
+    istopSeller,
+    isFeatured,
+    isNewArrival,
   } = req.body;
   console.log("info", req.body);
 
@@ -56,7 +58,9 @@ export const handleCreateProduct = async (req, res) => {
       stock,
       discount,
       rating,
-      location,
+      isNewArrival,
+      istopSeller,
+      isFeatured,
       images: imageUrls,
     });
 
@@ -111,7 +115,9 @@ export const handleUpdateProduct = async (req, res) => {
     stock,
     discount,
     rating,
-    location,
+    isNewArrival,
+    istopSeller,
+    isFeatured,
   } = req.body;
 
   try {
@@ -141,7 +147,9 @@ export const handleUpdateProduct = async (req, res) => {
       stock,
       discount,
       rating,
-      location,
+      isNewArrival,
+      istopSeller,
+      isFeatured,
     };
 
     if (imageUrls.length > 0) {
@@ -182,20 +190,6 @@ export const handleDeleteProduct = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-// export const handleGetSingleProduct = async (req, res) => {
-//   const { id } = req.params;
-//   try {
-//     const product = await Product.findById(id);
-//     if (!product) {
-//       return res.status(404).json({ message: "Product not found" });
-//     }
-//     return res.status(200).json({ product });
-//   } catch (error) {
-//     console.error("Error fetching product", error);
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// };
 
 export const handleDeleteMultipleProducts = async (req, res) => {
   try {

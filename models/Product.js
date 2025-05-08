@@ -52,8 +52,17 @@ const productModel = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  location: {
+  isNewArrival: {
     type: String,
+    default: false,
+  },
+  isFeatured: {
+    type: String,
+    default: false,
+  },
+  istopSeller: {
+    type: String,
+    default: false,
   },
   images: {
     type: [String],

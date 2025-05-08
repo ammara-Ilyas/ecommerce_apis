@@ -11,6 +11,7 @@ import size_router from "../routes/size.routes.js";
 import product_router from "../routes/product.routes.js";
 import user_router from "../routes/user.routes.js";
 import review_router from "../routes/review.routes.js";
+import deal_router from "../routes/deals.routes.js";
 import connectCloudinary from "../config/cloudinary.js";
 
 const app = express();
@@ -43,6 +44,7 @@ app.use("/api/", ram_router);
 app.use("/api/", size_router);
 app.use("/api/", product_router);
 app.use("/api/", review_router);
+app.use("/api/", deal_router);
 
 app.get("/", (req, res) => {
   console.log("hello world backend");

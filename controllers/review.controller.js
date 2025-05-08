@@ -51,6 +51,7 @@ export const handlerGetReviewById = async (req, res) => {
 
 export const handlerUpdateReview = async (req, res) => {
   const { comment, rating } = req.body;
+  console.log("body", req.body);
 
   try {
     const updatedReview = await Review.findByIdAndUpdate(
