@@ -5,7 +5,7 @@ import {
   handleDeleteDeal,
   handleDeleteMultipleDeals,
   handleUpdateDeal,
-} from "../controllers/products/deal.controller.jsx";
+} from "../controllers/products/deal.controller.js";
 import { upload } from "../middleware/multer.middleware.js";
 const deal_router = express.Router();
 

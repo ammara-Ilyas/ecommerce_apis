@@ -12,7 +12,9 @@ import product_router from "../routes/product.routes.js";
 import user_router from "../routes/user.routes.js";
 import review_router from "../routes/review.routes.js";
 import deal_router from "../routes/deals.routes.js";
+import cart_router from "../routes/cart.routes.js";
 import connectCloudinary from "../config/cloudinary.js";
+import wish_router from "../routes/wishlist.routes.js";
 
 const app = express();
 
@@ -45,9 +47,11 @@ app.use("/api/", size_router);
 app.use("/api/", product_router);
 app.use("/api/", review_router);
 app.use("/api/", deal_router);
+app.use("/api/", cart_router);
+app.use("/api/", wish_router);
 
 app.get("/", (req, res) => {
-  console.log("hello world backend");
+  console.log("hello world from ecoomerce backend");
 
   res.json({ message: "Welcome to backend" });
 });

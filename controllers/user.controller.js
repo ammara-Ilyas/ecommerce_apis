@@ -78,16 +78,21 @@ export const resendOTP = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  const { email, password } = req.body;
   console.log("body", req.body);
+  const { email, password } = req.body;
 
   const user = await User.findOne({ email });
-  if (!user || !user.isVerified)
-    return res.status(400).json({ message: "User not verified" });
+  if (!user || !user.isVerified) {
+    await User.findOneAndDelete({ email });
+  }
+
+  if (!user) return res.status(400).json({ message: "User not exist" });
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.status(400).json({ message: "Wrong password" });
   const token = jwt.sign({ id: user._id }, "jwt_secret", { expiresIn: "7d" });
-  res.status(200).json({ token: token, message: "Login successfully" });
+  res
+    .status(200)
+    .json({ token: token, message: "Login successfully", userId: user._id });
 };
 
 export const requestPasswordReset = async (req, res) => {

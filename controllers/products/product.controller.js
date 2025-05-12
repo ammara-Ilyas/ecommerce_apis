@@ -78,12 +78,7 @@ export const handleCreateProduct = async (req, res) => {
 
 export const handleGetProducts = async (req, res) => {
   try {
-    const products = await Product.find({}).populate([
-      { path: "weight" },
-      { path: "size" },
-      { path: "ram" },
-      { path: "category" },
-    ]);
+    const products = await Product.find({});
     // console.log("products", products);
 
     return res.status(200).json({
