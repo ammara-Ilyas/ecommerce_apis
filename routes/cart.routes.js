@@ -20,7 +20,7 @@ cart_router.get("/cart/:userId", handleGetCartItems);
 cart_router.put("/cart/:id", handleUpdateCartItem);
 
 // Delete a specific cart item
-cart_router.delete("/cart/:id", handleDeleteCartItem);
+cart_router.delete("/cart/:cartItemId", handleDeleteCartItem);
 
 // Delete multiple cart items
 cart_router.post("/cart/delete-multiple", handleDeleteMultipleCartItems);

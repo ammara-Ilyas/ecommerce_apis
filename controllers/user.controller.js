@@ -1,5 +1,6 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+
 import jwt from "jsonwebtoken";
 import { sendOTPEmail } from "../libs/nodemailer.js";
 
@@ -35,7 +36,7 @@ export const signup = async (req, res) => {
       otpExpiry: Date.now() + 600000,
     });
     console.log("otp", otp);
-    console.log(name, email);
+    // console.log(name, email);
 
     await sendOTPEmail(user.name, user.email, `<h3>OTP: ${otp}</h3>`);
     res.status(200).json({ message: "OTP sent to email", user: user });
@@ -81,60 +82,74 @@ export const login = async (req, res) => {
   console.log("body", req.body);
   const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user || !user.isVerified) {
+  let user = await User.findOne({ email });
+
+  if (user && !user.isVerified) {
+    console.log(`Deleting unverified user with email: ${email}`);
+
     await User.findOneAndDelete({ email });
+    user = null;
   }
 
-  if (!user) return res.status(400).json({ message: "User not exist" });
+  if (!user) {
+    return res.status(400).json({ message: "User not exist" });
+  }
+
   const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(400).json({ message: "Wrong password" });
+  if (!match) {
+    return res.status(400).json({ message: "Wrong password" });
+  }
+
+  // ✅ User verified and password matches
   const token = jwt.sign({ id: user._id }, "jwt_secret", { expiresIn: "7d" });
-  res
-    .status(200)
-    .json({ token: token, message: "Login successfully", userId: user._id });
+
+  res.status(200).json({
+    token,
+    message: "Login successfully",
+    user: {
+      name: user.name,
+      email: user.email,
+      id: user._id,
+    },
+  });
 };
 
 export const requestPasswordReset = async (req, res) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
   if (!user) return res.status(400).json({ message: "User not found" });
-  const token = jwt.sign({ id: user._id }, "reset_secret", {
-    expiresIn: "15m",
-  });
-  user.resetToken = token;
-  user.resetTokenExpiry = Date.now() + 900000;
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+  const otpExpiry = Date.now() + 10 * 60 * 1000; // valid for 10 minutes
+
+  user.resetOTP = otp;
+  user.resetOTPExpiry = otpExpiry;
   await user.save();
-  await sendOTPEmail(
-    user.name,
-    email,
-    `<a href='http://localhost:3000/reset-password?token=${token}'>Reset Password</a>`
-  );
-  res.status(200).json({ message: "Reset email sent", user: user });
+
+  await sendOTPEmail(user.name, email, `Your OTP is: ${otp}`);
+
+  res.status(200).json({ message: "OTP sent to email" });
 };
 
 export const resetPassword = async (req, res) => {
-  const { token, newPassword } = req.body;
-  try {
-    const decoded = jwt.verify(token, "reset_secret");
-    const user = await User.findById(decoded.id);
-    if (
-      !user ||
-      user.resetToken !== token ||
-      user.resetTokenExpiry < Date.now()
-    )
-      return res.status(400).json({ message: "Invalid or expired token" });
-    user.password = await bcrypt.hash(newPassword, 12);
-    user.resetToken = null;
-    await user.save();
-    res.status(200).json({ message: "Password reset" });
-  } catch {
-    res.status(400).json({ message: "Invalid token" });
+  const { email, newPassword } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user || !user.isOTPVerified) {
+    return res.status(400).json({ message: "OTP not verified" });
   }
+
+  user.password = await bcrypt.hash(newPassword, 12);
+  user.isOTPVerified = false;
+  await user.save();
+
+  res.status(200).json({ message: "Password successfully reset" });
 };
 
 export const changePassword = async (req, res) => {
+  console.log("body", req.body);
   const { currentPassword, newPassword } = req.body;
+
   const token = req.headers.authorization?.split(" ")[1];
   const { id } = jwt.verify(token, "jwt_secret");
   const user = await User.findById(id);

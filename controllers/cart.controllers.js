@@ -3,7 +3,7 @@ import Cart from "../models/Cart.js";
 // Add product to cart
 export const handleAddToCart = async (req, res) => {
   console.log("body", req.body);
-  console.log("🧪 Headers:", req.headers["content-type"]);
+  // console.log("🧪 Headers:", req.headers["content-type"]);
 
   const { userId, productId, quantity } = req.body;
 
@@ -42,6 +42,7 @@ export const handleAddToCart = async (req, res) => {
 
 export const handleGetCartItems = async (req, res) => {
   const { userId } = req.params;
+  console.log("catrt", userId);
 
   try {
     const cartItems = await Cart.find({ user: userId }).populate("product");
@@ -83,9 +84,10 @@ export const handleUpdateCartItem = async (req, res) => {
 
 export const handleDeleteCartItem = async (req, res) => {
   const { cartItemId } = req.params;
-
+  console.log("cart in delete", cartItemId);
   try {
     const deletedItem = await Cart.findByIdAndDelete(cartItemId);
+    console.log("cart in deletedItem", deletedItem);
 
     if (!deletedItem) {
       return res.status(404).json({ message: "Cart item not found" });
