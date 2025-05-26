@@ -21,29 +21,54 @@ export const getAllUsers = async (req, res) => {
 export const signup = async (req, res) => {
   console.log("body", req.body);
 
-  const { name, email, password } = req.body;
-  const userExists = await User.findOne({ email });
-  if (userExists)
-    return res.status(400).json({ message: "User already exists" });
+  const { name, email, phone, password } = req.body;
+
+  let userExists = await User.findOne({ email });
+
+  if (userExists) {
+    if (userExists.isVerified) {
+      return res.status(400).json({ message: "User already exists" });
+    } else {
+      // User exists but not verified — update OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      userExists.otp = otp;
+      userExists.otpExpiry = Date.now() + 600000; // 10 minutes from now
+      await userExists.save();
+
+      console.log("otp (resend)", otp);
+      await sendOTPEmail(
+        userExists.name,
+        userExists.email,
+        `<h3>OTP: ${otp}</h3>`
+      );
+
+      return res
+        .status(200)
+        .json({ message: "OTP re-sent to email", user: userExists });
+    }
+  }
+
+  // If user does not exist, create new
   const hashed = await bcrypt.hash(password, 12);
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
   try {
     const user = await User.create({
       name,
       email,
+      phone,
       password: hashed,
       otp,
       otpExpiry: Date.now() + 600000,
     });
-    console.log("otp", otp);
-    // console.log(name, email);
 
+    console.log("otp (new)", otp);
     await sendOTPEmail(user.name, user.email, `<h3>OTP: ${otp}</h3>`);
+
     res.status(200).json({ message: "OTP sent to email", user: user });
   } catch (error) {
     console.log("error", error);
-
-    res.json({ message: "internal sever error", error: error });
+    res.status(500).json({ message: "Internal server error", error });
   }
 };
 
@@ -86,7 +111,6 @@ export const login = async (req, res) => {
 
   if (user && !user.isVerified) {
     console.log(`Deleting unverified user with email: ${email}`);
-
     await User.findOneAndDelete({ email });
     user = null;
   }

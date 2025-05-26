@@ -42,7 +42,7 @@ export const handleAddToCart = async (req, res) => {
 
 export const handleGetCartItems = async (req, res) => {
   const { userId } = req.params;
-  console.log("catrt", userId);
+  console.log("handleGetCartItems user id", userId);
 
   try {
     const cartItems = await Cart.find({ user: userId }).populate("product");

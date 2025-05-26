@@ -78,8 +78,11 @@ export const handleCreateProduct = async (req, res) => {
 
 export const handleGetProducts = async (req, res) => {
   try {
-    const products = await Product.find({});
-    // console.log("products", products);
+    const products = await Product.find().populate(
+      "category",
+      "name _id subCategory"
+    );
+    console.log("products", products);
 
     return res.status(200).json({
       message: "Products fetched successfully",

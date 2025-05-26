@@ -15,11 +15,17 @@ import deal_router from "../routes/deals.routes.js";
 import cart_router from "../routes/cart.routes.js";
 import connectCloudinary from "../config/cloudinary.js";
 import wish_router from "../routes/wishlist.routes.js";
+import payment_router from "../routes/payment.route.js";
+import contact_router from "../routes/contact.route.js";
 
 const app = express();
 
 const corsOptions = {
-  origin: ["http://localhost:3000", "http://localhost:3001"],
+  origin: [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+  ],
   methods: ["GET", "POST", "DELETE", "UPDATE", "PUT", "PATCH"],
   credentials: true,
   optionsSuccessStatus: 200,
@@ -49,6 +55,8 @@ app.use("/api/", review_router);
 app.use("/api/", deal_router);
 app.use("/api/", cart_router);
 app.use("/api/", wish_router);
+app.use("/api/", payment_router);
+app.use("/api/", contact_router);
 
 app.get("/", (req, res) => {
   console.log("hello world from ecoomerce backend");
