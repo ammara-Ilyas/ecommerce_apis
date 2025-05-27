@@ -79,11 +79,11 @@ export const handleCreateProduct = async (req, res) => {
 export const handleGetProducts = async (req, res) => {
   try {
     const products = await Product.find()
-      .populate("category", "name _id subCategory")
-      .populate("subCategory", "name _id")
-      .populate("size", "size _id")
-      .populate("weight", "weight _id")
-      .populate("ram", "ram _id");
+      .populate("category", "name ")
+      .populate("subCategory", "name ")
+      .populate("size", "size")
+      .populate("weight", "weight")
+      .populate("ram", "ram");
 
     // console.log("products", products);
 
