@@ -13,6 +13,11 @@ const userSchema = new mongoose.Schema(
     otpExpiry: Date,
     resetToken: String,
     resetTokenExpiry: Date,
+    role: {
+      type: String,
+      enum: ["user", "admin", "seller"],
+      default: "user",
+    },
   },
   { timestamps: true }
 );

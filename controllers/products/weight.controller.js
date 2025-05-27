@@ -25,7 +25,7 @@ export const handleGetWeights = async (req, res) => {
 
   try {
     const weights = await Weight.find({});
-    console.log("weihts", weights);
+    // console.log("weihts", weights);
 
     return res.status(200).json({
       message: "Weight fetched successfully",

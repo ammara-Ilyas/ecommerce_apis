@@ -78,11 +78,14 @@ export const handleCreateProduct = async (req, res) => {
 
 export const handleGetProducts = async (req, res) => {
   try {
-    const products = await Product.find().populate(
-      "category",
-      "name _id subCategory"
-    );
-    console.log("products", products);
+    const products = await Product.find()
+      .populate("category", "name _id subCategory")
+      .populate("subCategory", "name _id")
+      .populate("size", "size _id")
+      .populate("weight", "weight _id")
+      .populate("ram", "ram _id");
+
+    // console.log("products", products);
 
     return res.status(200).json({
       message: "Products fetched successfully",
@@ -174,10 +177,28 @@ export const handleUpdateProduct = async (req, res) => {
 
 export const handleDeleteProduct = async (req, res) => {
   const { id } = req.params;
+  console.log("id", id);
+
   try {
     const deletedProduct = await Product.findByIdAndDelete(id);
     if (!deletedProduct) {
       return res.status(404).json({ message: "Product not found" });
+    }
+    // Delete images from Cloudinary
+    console.log("deletedproduct", deletedProduct.images);
+
+    if (deletedProduct.images && deletedProduct.images.length > 0) {
+      console.log("images");
+
+      for (const img of deletedProduct.images) {
+        console.log("img", img);
+
+        if (img.public_id) {
+          console.log("destro product images", img.publuc_id);
+          await cloudinary.uploader.destroy(img.public_id);
+          console.log("destroyed product images");
+        }
+      }
     }
     return res.status(200).json({
       message: "Product deleted successfully",

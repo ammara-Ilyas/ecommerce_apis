@@ -8,6 +8,7 @@ import {
   changePassword,
   resendOTP,
   getAllUsers,
+  createDefaultAdmin,
 } from "../controllers/user.controller.js";
 const user_router = express.Router();
 

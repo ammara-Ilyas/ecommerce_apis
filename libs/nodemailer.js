@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendOTPEmail = async (name, email, html) => {
-  console.log("send otp email", email);
+  // console.log("send otp email", email);
 
   try {
     const response = await transporter.sendMail({
@@ -23,7 +23,7 @@ export const sendOTPEmail = async (name, email, html) => {
       text: "Verify your Email",
       html,
     });
-    console.log("Email send Successfully", response);
+    // console.log("Email send Successfully", response);
   } catch (error) {
     console.log("Email error", error);
   }

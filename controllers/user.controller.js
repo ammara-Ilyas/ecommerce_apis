@@ -1,9 +1,9 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
-
+import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import { sendOTPEmail } from "../libs/nodemailer.js";
-
+dotenv.config();
 export const getAllUsers = async (req, res) => {
   console.log("get all users");
 
@@ -106,6 +106,7 @@ export const resendOTP = async (req, res) => {
 export const login = async (req, res) => {
   console.log("body", req.body);
   const { email, password } = req.body;
+  console.log("process.env.jwt_SECRET_KEY", process.env.jwt_SECRET_KEY);
 
   let user = await User.findOne({ email });
 
@@ -125,7 +126,18 @@ export const login = async (req, res) => {
   }
 
   // ✅ User verified and password matches
-  const token = jwt.sign({ id: user._id }, "jwt_secret", { expiresIn: "7d" });
+  const token = jwt.sign(
+    {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role, // ✅ THIS is the correct payload
+    },
+    process.env.jwt_SECRET_KEY,
+    {
+      expiresIn: "7d",
+    }
+  );
 
   res.status(200).json({
     token,
@@ -134,6 +146,7 @@ export const login = async (req, res) => {
       name: user.name,
       email: user.email,
       id: user._id,
+      role: user.role,
     },
   });
 };
@@ -175,7 +188,7 @@ export const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
 
   const token = req.headers.authorization?.split(" ")[1];
-  const { id } = jwt.verify(token, "jwt_secret");
+  const { id } = jwt.verify(token, process.env.jwt_SECRET_KEY);
   const user = await User.findById(id);
   const match = await bcrypt.compare(currentPassword, user.password);
   if (!match)
@@ -183,4 +196,31 @@ export const changePassword = async (req, res) => {
   user.password = await bcrypt.hash(newPassword, 12);
   await user.save();
   res.status(200).json({ message: "Password changed" });
+};
+
+export const createDefaultAdmin = async () => {
+  try {
+    const adminEmail = "ammarailyas361@gmail.com";
+
+    const existingAdmin = await User.findOne({ email: adminEmail });
+    if (existingAdmin) {
+      console.log("Admin already exists");
+      return;
+    }
+
+    const hashedPassword = await bcrypt.hash("Admin@123", 10);
+
+    const adminUser = new User({
+      name: "Ammara Ilyas",
+      email: adminEmail,
+      password: hashedPassword,
+      role: "admin",
+      isVerified: true,
+    });
+
+    await adminUser.save();
+    console.log("Default admin created");
+  } catch (error) {
+    console.error("Error creating admin:", error);
+  }
 };
