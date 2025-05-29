@@ -2,11 +2,11 @@ import Cart from "../models/Cart.js";
 
 // Add product to cart
 export const handleAddToCart = async (req, res) => {
-  console.log("body", req.body);
+  console.log("body", req.body, req.params.userId);
   // console.log("🧪 Headers:", req.headers["content-type"]);
 
-  const { userId, productId, quantity } = req.body;
-
+  const { productId, quantity } = req.body;
+  const { userId } = req.params;
   try {
     // Check if the product already exists in the user's cart
     const existingCartItem = await Cart.findOne({
@@ -173,5 +173,28 @@ export const handleDecreaseQuantity = async (req, res) => {
   } catch (error) {
     console.error("Error while decreasing quantity", error);
     res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// DELETE /api/cart/:userId
+export const deleteCartItemsByUser = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const result = await Cart.deleteMany({ user: userId });
+
+    if (result.deletedCount === 0) {
+      return res
+        .status(404)
+        .json({ message: "No cart items found for this user." });
+    }
+
+    res
+      .status(200)
+      .json({ message: `Deleted ${result.deletedCount} cart item(s).` });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: "Error deleting cart items", error: error.message });
   }
 };

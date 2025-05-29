@@ -8,7 +8,7 @@ import {
 const wish_router = express.Router();
 
 // Add to wishlist
-wish_router.post("/wish", handleAddToWishlist);
+wish_router.post("/wish/:userId", handleAddToWishlist);
 
 // Get wishlist items for a user
 wish_router.get("/wish/:userId", handleGetWishlist);

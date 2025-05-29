@@ -3,7 +3,8 @@ import Wishlist from "../models/Wish.js";
 export const handleAddToWishlist = async (req, res) => {
   console.log("body in wish", req.body);
 
-  const { userId, productId } = req.body;
+  const { productId } = req.body;
+  const { userId } = req.params;
 
   try {
     const existingItem = await Wishlist.findOne({

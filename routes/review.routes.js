@@ -12,7 +12,7 @@ import {
 const review_router = express.Router();
 
 // Create a review
-review_router.post("/review/", handlerCreateReview);
+review_router.post("/review/:productId", handlerCreateReview);
 
 // Get all reviews
 review_router.get("/reviews/", handlerGetAllReviews);

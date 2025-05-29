@@ -1,8 +1,9 @@
 import Review from "../models/Reviews.js";
 
 export const handlerCreateReview = async (req, res) => {
-  const { userId, productId, comment, rating } = req.body;
+  const { userId, comment, rating } = req.body;
   console.log("body", req.body);
+  const { productId } = req.params;
 
   try {
     const newReview = await new Review({

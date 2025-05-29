@@ -24,6 +24,8 @@ const corsOptions = {
   origin: [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://shop-eco-dashboard.netlify.app",
+    "https://shop-eco-dashboard.netlify.app/",
     "http://localhost:3001",
   ],
   methods: ["GET", "POST", "DELETE", "UPDATE", "PUT", "PATCH"],
@@ -56,6 +58,7 @@ app.use("/api/", deal_router);
 app.use("/api/", cart_router);
 app.use("/api/", wish_router);
 app.use("/api/", payment_router);
+app.use("/api/", contact_router);
 app.use("/api/", contact_router);
 
 app.get("/", (req, res) => {

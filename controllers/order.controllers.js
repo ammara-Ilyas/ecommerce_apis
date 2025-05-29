@@ -6,7 +6,7 @@ dotenv.config();
 
 export const createCheckoutSession = async (req, res) => {
   try {
-    const { name, email, phone, address, cartItems, amount } = req.body;
+    const { name, email, phone, address, cartItems, amount, userId } = req.body;
     console.log("req body", req.body);
 
     if (!email || cartItems.length === 0) {
@@ -51,6 +51,7 @@ export const createCheckoutSession = async (req, res) => {
 
     // Save order in DB
     await Order.create({
+      userId: userId,
       userEmail: email,
       userName: name,
       phone,
@@ -150,6 +151,48 @@ export const toggleRefund = async (req, res) => {
       message: `Refunds are now ${enable ? "enabled" : "disabled"}`,
       settings,
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get all orders (admin or for dashboard)
+export const getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find().sort({ createdAt: -1 });
+    res.json({ message: "Orders fetched successfully", orders: orders });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get all orders for a specific user by userId
+export const getOrderByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required." });
+    }
+
+    const orders = await Order.find({ userId }).sort({ createdAt: -1 });
+
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+export const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const deletedOrder = await Order.findByIdAndDelete(orderId);
+
+    if (!deletedOrder) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    res.json({ message: "Order deleted successfully.", order: deletedOrder });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

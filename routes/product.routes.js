@@ -25,7 +25,7 @@ product_router.put(
   handleUpdateProduct
 );
 product_router.delete("/product/:id", verifyAdmin, handleDeleteProduct);
-product_router.get("/product/:id", verifyAdmin, handleGetProductById);
+product_router.get("/product/:id", handleGetProductById);
 product_router.get("/products", handleGetProducts);
 product_router.post(
   "/products/delete-multiple",
