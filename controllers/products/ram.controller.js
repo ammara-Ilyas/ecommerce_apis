@@ -1,4 +1,4 @@
-import Ram from "../../models/ram.js";
+import Ram from "../../models/Ram.js";
 export const handleCreatRam = async (req, res) => {
   const { ram } = req.body;
   console.log("ram", ram);
