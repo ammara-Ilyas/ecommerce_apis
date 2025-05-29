@@ -23,9 +23,10 @@ const app = express();
 const corsOptions = {
   origin: [
     "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "https://shop-eco-dashboard.netlify.app",
-    "https://shop-eco-dashboard.netlify.app/",
+    "https://shops-with-me.netlify.app/",
+    "https://shops-with-me.netlify.app",
+    "https://shop-withme-dashboard.netlify.app",
+    "https://shop-withme-dashboard.netlify.app/",
     "http://localhost:3001",
   ],
   methods: ["GET", "POST", "DELETE", "UPDATE", "PUT", "PATCH"],
