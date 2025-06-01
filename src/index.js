@@ -17,12 +17,14 @@ import connectCloudinary from "../config/cloudinary.js";
 import wish_router from "../routes/wishlist.routes.js";
 import payment_router from "../routes/payment.route.js";
 import contact_router from "../routes/contact.route.js";
+import webhook_router from "../routes/webhook.route.js";
 
 const app = express();
 
 const corsOptions = {
   origin: [
     "http://localhost:3000",
+    "http://localhost:3000/",
     "https://shop-withs-me.netlify.app/",
     "https://shop-withs-me.netlify.app",
     "https://shop-withme-dashboard.netlify.app",
@@ -34,9 +36,11 @@ const corsOptions = {
   optionsSuccessStatus: 200,
 };
 
+app.use("/api/", webhook_router);
+
+app.use(cors(corsOptions));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(cors(corsOptions));
 dotenv.config();
 
 const PORT = process.env.PORT || 8000;
@@ -59,7 +63,6 @@ app.use("/api/", deal_router);
 app.use("/api/", cart_router);
 app.use("/api/", wish_router);
 app.use("/api/", payment_router);
-app.use("/api/", contact_router);
 app.use("/api/", contact_router);
 
 app.get("/", (req, res) => {

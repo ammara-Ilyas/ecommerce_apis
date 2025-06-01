@@ -9,19 +9,17 @@ const orderSchema = new mongoose.Schema(
     userEmail: String,
     userName: String,
     phone: String,
-    address: String,
+    address: Object,
     cart: Array,
     stripeSessionId: String,
     amount: Number,
-    isPaid: Boolean,
+    isPaid: { type: Boolean, default: false },
+    isRefunded: { type: Boolean, default: false },
+    isDisputed: { type: Boolean, default: false },
     isRefunded: { type: Boolean, default: false },
 
     // New status field
-    status: {
-      type: String,
-      enum: ["pending", "paid", "delivered"],
-      default: "pending",
-    },
+    status: { type: String, default: "pending" },
   },
   { timestamps: true }
 );

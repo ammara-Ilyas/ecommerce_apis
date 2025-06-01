@@ -22,10 +22,12 @@ export const handlerCreateReview = async (req, res) => {
 };
 
 export const handlerGetAllReviews = async (req, res) => {
+  console.log("revies get");
+
   try {
-    const reviews = await Review.find()
-      .populate("user", "name email") // full user details
-      .populate("product", "product images");
+    const reviews = await Review.find();
+    // .populate("user", "name email")
+    // .populate("product", "product images");
 
     console.log("review length", reviews.length);
     res
@@ -37,8 +39,11 @@ export const handlerGetAllReviews = async (req, res) => {
 };
 
 export const handlerGetReviewById = async (req, res) => {
+  const { id } = req.params;
+  console.log("id", id);
+
   try {
-    const review = await Review.findById(req.params.id)
+    const review = await Review.findById(id)
       .populate("user", "name")
       .populate("product", "name");
 

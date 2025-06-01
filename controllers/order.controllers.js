@@ -88,6 +88,59 @@ export const verifyPayment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+export const stripeWebhook = async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.rawBody,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET
+    );
+  } catch (err) {
+    console.error("❌ Webhook signature error:", err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // 📦 Handle event types
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object;
+      await Order.findOneAndUpdate(
+        { stripeSessionId: session.id },
+        { isPaid: true }
+      );
+      break;
+    }
+
+    case "charge.dispute.created": {
+      const dispute = event.data.object;
+      const chargeId = dispute.charge;
+      const order = await Order.findOneAndUpdate(
+        { stripeSessionId: dispute.payment_intent },
+        { isDisputed: true }
+      );
+      console.warn("⚠️ Dispute created:", dispute.id);
+      break;
+    }
+
+    case "charge.dispute.closed": {
+      const dispute = event.data.object;
+      await Order.findOneAndUpdate(
+        { stripeSessionId: dispute.payment_intent },
+        { isDisputed: false }
+      );
+      console.log("✅ Dispute resolved:", dispute.id);
+      break;
+    }
+
+    default:
+      console.log(`Unhandled event type: ${event.type}`);
+  }
+
+  res.status(200).json({ received: true });
+};
 
 export const refundOrder = async (req, res) => {
   try {
