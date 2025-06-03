@@ -12,6 +12,16 @@ const orderSchema = new mongoose.Schema(
     address: Object,
     cart: Array,
     stripeSessionId: String,
+    paymentIntentId: String, // Add this to link paymentIntent
+
+    refundPolicyAccepted: { type: Boolean, default: false }, // Track if user accepted refund policy
+
+    threeDSecureStatus: { type: String, default: null }, // Store 3D Secure status, e.g. "authenticated"
+
+    disputeDetails: { type: Object, default: null }, // Store dispute info from webhook
+
+    shippingProof: { type: String, default: null }, // URL or details of shipping proof
+
     amount: Number,
     isPaid: { type: Boolean, default: false },
     isRefunded: { type: Boolean, default: false },

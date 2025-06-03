@@ -70,6 +70,48 @@ export const createCheckoutSession = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// export const createPaymentIntent = async (req, res) => {
+//   try {
+//     const { amount, email, name, cartItems, userId } = req.body;
+
+//     if (!amount || isNaN(amount)) {
+//       return res.status(400).json({ error: "Invalid amount received" });
+//     }
+
+//     const amountInCents = Math.round(amount * 100);
+
+//     // Optionally: create an order in DB and get orderId
+//     const order = await Order.create({
+//       userId,
+//       userEmail: email,
+//       userName: name,
+//       cart: cartItems,
+//       amount,
+//       isPaid: false,
+//       status: "pending",
+//     });
+
+//     const paymentIntent = await stripe.paymentIntents.create({
+//       amount: amountInCents,
+//       currency: "usd",
+//       metadata: {
+//         email,
+//         name,
+//         userId,
+//         orderId: order._id.toString(), // ✅ Only small value
+//       },
+//     });
+
+//     return res.status(200).json({
+//       clientSecret: paymentIntent.client_secret,
+//     });
+//   } catch (error) {
+//     console.error("Error creating PaymentIntent:", error.message);
+//     return res.status(500).json({ error: "Something went wrong" });
+//   }
+// };
+
 export const verifyPayment = async (req, res) => {
   try {
     const { session_id } = req.query;
@@ -80,99 +122,58 @@ export const verifyPayment = async (req, res) => {
         { stripeSessionId: session_id },
         { isPaid: true }
       );
-      res.json({ message: "Payment verified and order updated" });
+      res.json({
+        success: true,
+        message: "Payment verified and order updated",
+      });
     } else {
-      res.status(400).json({ message: "Payment not completed" });
+      res.status(400).json({
+        success: false,
+        message: "Payment not completed",
+      });
     }
   } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-export const stripeWebhook = async (req, res) => {
-  const sig = req.headers["stripe-signature"];
-  let event;
+    res.status(500).json({
+      success: false,
 
-  try {
-    event = stripe.webhooks.constructEvent(
-      req.rawBody,
-      sig,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
-  } catch (err) {
-    console.error("❌ Webhook signature error:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // 📦 Handle event types
-  switch (event.type) {
-    case "checkout.session.completed": {
-      const session = event.data.object;
-      await Order.findOneAndUpdate(
-        { stripeSessionId: session.id },
-        { isPaid: true }
-      );
-      break;
-    }
-
-    case "charge.dispute.created": {
-      const dispute = event.data.object;
-      const chargeId = dispute.charge;
-      const order = await Order.findOneAndUpdate(
-        { stripeSessionId: dispute.payment_intent },
-        { isDisputed: true }
-      );
-      console.warn("⚠️ Dispute created:", dispute.id);
-      break;
-    }
-
-    case "charge.dispute.closed": {
-      const dispute = event.data.object;
-      await Order.findOneAndUpdate(
-        { stripeSessionId: dispute.payment_intent },
-        { isDisputed: false }
-      );
-      console.log("✅ Dispute resolved:", dispute.id);
-      break;
-    }
-
-    default:
-      console.log(`Unhandled event type: ${event.type}`);
-  }
-
-  res.status(200).json({ received: true });
-};
-
-export const refundOrder = async (req, res) => {
-  try {
-    const { session_id } = req.body;
-
-    const settings = await AdminSettings.findOne();
-    if (!settings?.refundEnabled) {
-      return res
-        .status(403)
-        .json({ message: "Refunds are currently disabled by admin." });
-    }
-
-    const order = await Order.findOne({ stripeSessionId: session_id });
-
-    if (!order || !order.isPaid || order.isRefunded) {
-      return res.status(400).json({ message: "Invalid refund request." });
-    }
-
-    const refund = await stripe.refunds.create({
-      payment_intent: (
-        await stripe.checkout.sessions.retrieve(session_id)
-      ).payment_intent,
+      error: error.message,
     });
-
-    order.isRefunded = true;
-    await order.save();
-
-    res.json({ message: "Refund successful", refund });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 };
+export const handleRefund = (req, res) => {
+  return res.status(403).json({ error: "Refunds are not allowed." });
+};
+// export const refundOrder = async (req, res) => {
+//   try {
+//     const { session_id } = req.body;
+
+//     const settings = await AdminSettings.findOne();
+//     if (!settings?.refundEnabled) {
+//       return res
+//         .status(403)
+//         .json({ message: "Refunds are currently disabled by admin." });
+//     }
+
+//     const order = await Order.findOne({ stripeSessionId: session_id });
+
+//     if (!order || !order.isPaid || order.isRefunded) {
+//       return res.status(400).json({ message: "Invalid refund request." });
+//     }
+
+//     const refund = await stripe.refunds.create({
+//       payment_intent: (
+//         await stripe.checkout.sessions.retrieve(session_id)
+//       ).payment_intent,
+//     });
+
+//     order.isRefunded = true;
+//     await order.save();
+
+//     res.json({ message: "Refund successful", refund });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
 
 export const markAsDelivered = async (req, res) => {
   try {
@@ -250,3 +251,22 @@ export const deleteOrder = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+//  const paymentIntent = await stripe.paymentIntents.create({
+//       amount: amountInCents,
+//       currency: "usd",
+//       payment_method_types: ["card"],
+//       confirmation_method: "automatic",
+//       confirm: true,
+//       metadata: {
+//         email,
+//         name,
+//         userId,
+//         items: JSON.stringify(cartItems),
+//       },
+//       payment_method_options: {
+//         card: {
+//           request_three_d_secure: "any",
+//         },
+//       },
+//     });
