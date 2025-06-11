@@ -25,9 +25,9 @@ export const handlerGetAllReviews = async (req, res) => {
   console.log("revies get");
 
   try {
-    const reviews = await Review.find();
-    // .populate("user", "name email")
-    // .populate("product", "product images");
+    const reviews = await Review.find()
+      .populate("user", "name email")
+      .populate("product", "product images");
 
     console.log("review length", reviews.length);
     res

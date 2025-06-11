@@ -33,6 +33,7 @@ export const handleAddToWishlist = async (req, res) => {
 // Get all wishlist items for a user
 export const handleGetWishlist = async (req, res) => {
   const { userId } = req.params;
+  console.log("body in wish", req.params.userId);
 
   try {
     const wishlist = await Wishlist.find({ user: userId }).populate("product");
