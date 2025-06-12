@@ -26,7 +26,7 @@ const corsOptions = {
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "https://shop-withs-me.netlify.app",
-    "https://shop-withme-dashboard.netlify.app",
+    "https://ecommerce-shop-dashboard.netlify.app",
     "http://localhost:3001",
   ],
   methods: ["GET", "POST", "DELETE", "UPDATE", "PUT", "PATCH"],
