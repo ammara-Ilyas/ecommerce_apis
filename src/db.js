@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { createDefaultAdmin } from "../controllers/user.controller.js";
+// import { createDefaultAdmin } from "../controllers/user.controller.js";
 
 const connectDB = async (url) => {
   try {

@@ -1,226 +1,464 @@
 import User from "../models/User.js";
-import bcrypt from "bcryptjs";
-import dotenv from "dotenv";
-import jwt from "jsonwebtoken";
 import { sendOTPEmail } from "../libs/nodemailer.js";
-dotenv.config();
-export const getAllUsers = async (req, res) => {
-  console.log("get all users");
+import { 
+  asyncHandler, 
+  AppError, 
+  ValidationError, 
+  AuthenticationError, 
+  ConflictError,
+  NotFoundError 
+} from "../src/utils/errorHandler.js";
+import { generateToken } from "../src/middleware/auth.js";
+import logger from "../src/utils/logger.js";
 
-  try {
-    const users = await User.find({});
-    return res.status(200).json({
-      message: "users fetched successfully",
-      users: users,
-    });
-  } catch (error) {
-    console.log("Error getting users", error);
-    return res.json({ message: "Internal Server Error" });
+// Get all users (Admin only)
+export const getAllUsers = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 10, search, role, isActive } = req.query;
+  
+  const query = {};
+  
+  // Search functionality
+  if (search) {
+    query.$or = [
+      { name: { $regex: search, $options: 'i' } },
+      { email: { $regex: search, $options: 'i' } }
+    ];
   }
-};
-export const signup = async (req, res) => {
-  console.log("body", req.body);
+  
+  // Filter by role
+  if (role) {
+    query.role = role;
+  }
+  
+  // Filter by active status
+  if (isActive !== undefined) {
+    query.isActive = isActive === 'true';
+  }
+  
+  const skip = (page - 1) * limit;
+  
+  const users = await User.find(query)
+    .select('-password -otp -otpExpiry -resetToken -resetTokenExpiry')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(parseInt(limit));
+    
+  const total = await User.countDocuments(query);
+  
+  res.status(200).json({
+    success: true,
+    message: "Users fetched successfully",
+    data: {
+      users,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    }
+  });
+});
 
+// User signup
+export const signup = asyncHandler(async (req, res) => {
   const { name, email, phone, password } = req.body;
 
-  let userExists = await User.findOne({ email });
+  // Check if user already exists
+  const existingUser = await User.findByEmail(email);
 
-  if (userExists) {
-    if (userExists.isVerified) {
-      return res.status(400).json({ message: "User already exists" });
+  if (existingUser) {
+    if (existingUser.isVerified) {
+      throw new ConflictError("User already exists with this email");
     } else {
       // User exists but not verified — update OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      userExists.otp = otp;
-      userExists.otpExpiry = Date.now() + 600000; // 10 minutes from now
-      await userExists.save();
+      existingUser.otp = otp;
+      existingUser.otpExpiry = Date.now() + 600000; // 10 minutes
+      await existingUser.save();
 
-      console.log("otp (resend)", otp);
+      logger.info({
+        message: "OTP resent for existing unverified user",
+        email: existingUser.email
+      });
+
       await sendOTPEmail(
-        userExists.name,
-        userExists.email,
-        `<h3>OTP: ${otp}</h3>`
+        existingUser.name,
+        existingUser.email,
+        `<h3>Your OTP: ${otp}</h3>`
       );
 
-      return res
-        .status(200)
-        .json({ message: "OTP re-sent to email", user: userExists });
+      return res.status(200).json({
+        success: true,
+        message: "OTP re-sent to email",
+        data: {
+          user: {
+            id: existingUser._id,
+            name: existingUser.name,
+            email: existingUser.email,
+            phone: existingUser.phone
+          }
+        }
+      });
     }
   }
 
-  // If user does not exist, create new
-  const hashed = await bcrypt.hash(password, 12);
+  // Create new user
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  try {
-    const user = await User.create({
-      name,
-      email,
-      phone,
-      password: hashed,
-      otp,
-      otpExpiry: Date.now() + 600000,
-    });
+  const user = await User.create({
+    name,
+    email,
+    phone,
+    password,
+    otp,
+    otpExpiry: Date.now() + 600000,
+  });
 
-    console.log("otp (new)", otp);
-    await sendOTPEmail(user.name, user.email, `<h3>OTP: ${otp}</h3>`);
+  logger.info({
+    message: "New user registered",
+    email: user.email,
+    userId: user._id
+  });
 
-    res.status(200).json({ message: "OTP sent to email", user: user });
-  } catch (error) {
-    console.log("error", error);
-    res.status(500).json({ message: "Internal server error", error });
-  }
-};
+  await sendOTPEmail(user.name, user.email, `<h3>Your OTP: ${otp}</h3>`);
 
-export const verifyOTP = async (req, res) => {
+  res.status(201).json({
+    success: true,
+    message: "OTP sent to email",
+    data: {
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone
+      }
+    }
+  });
+});
+
+// Verify OTP
+export const verifyOTP = asyncHandler(async (req, res) => {
   const { email, otp } = req.body;
-  const user = await User.findOne({ email });
-  if (!user || user.otp !== otp || user.otpExpiry < Date.now())
-    return res.status(400).json({ message: "Invalid or expired OTP" });
+  
+  const user = await User.findByEmail(email);
+  
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+  
+  if (user.otp !== otp) {
+    throw new ValidationError("Invalid OTP");
+  }
+  
+  if (user.otpExpiry < Date.now()) {
+    throw new ValidationError("OTP has expired");
+  }
+  
   user.isVerified = true;
   user.otp = null;
-  await user.save();
-  res.status(200).json({ message: "Verified" });
-};
-
-export const resendOTP = async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
-
-  if (!user) {
-    return res.status(400).json({ message: "User not found" });
-  }
-
-  // Regenerate OTP and update expiry
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  user.otp = otp;
-  user.otpExpiry = Date.now() + 600000; // Reset OTP expiry to 10 minutes
-
+  user.otpExpiry = null;
   await user.save();
 
-  // Send the new OTP
-  await sendOTPEmail(user.name, email, otp);
-  res.status(200).json({ message: "OTP resent to email" });
-};
-
-export const login = async (req, res) => {
-  console.log("body", req.body);
-  const { email, password } = req.body;
-  console.log("process.env.jwt_SECRET_KEY", process.env.jwt_SECRET_KEY);
-
-  let user = await User.findOne({ email });
-
-  if (user && !user.isVerified) {
-    console.log(`Deleting unverified user with email: ${email}`);
-    await User.findOneAndDelete({ email });
-    user = null;
-  }
-
-  if (!user) {
-    return res.status(400).json({ message: "User not exist" });
-  }
-
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) {
-    return res.status(400).json({ message: "Wrong password" });
-  }
-
-  // ✅ User verified and password matches
-  const token = jwt.sign(
-    {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role, // ✅ THIS is the correct payload
-    },
-    process.env.jwt_SECRET_KEY,
-    {
-      expiresIn: "7d",
-    }
-  );
+  logger.info({
+    message: "User email verified",
+    email: user.email,
+    userId: user._id
+  });
 
   res.status(200).json({
-    token,
-    message: "Login successfully",
-    user: {
-      name: user.name,
-      email: user.email,
-      id: user._id,
-      role: user.role,
-    },
+    success: true,
+    message: "Email verified successfully"
   });
-};
+});
 
-export const requestPasswordReset = async (req, res) => {
+// Resend OTP
+export const resendOTP = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ message: "User not found" });
+  
+  const user = await User.findByEmail(email);
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-  const otpExpiry = Date.now() + 10 * 60 * 1000; // valid for 10 minutes
-
-  user.resetOTP = otp;
-  user.resetOTPExpiry = otpExpiry;
-  await user.save();
-
-  await sendOTPEmail(user.name, email, `Your OTP is: ${otp}`);
-
-  res.status(200).json({ message: "OTP sent to email" });
-};
-
-export const resetPassword = async (req, res) => {
-  const { email, newPassword } = req.body;
-  const user = await User.findOne({ email });
-
-  if (!user || !user.isOTPVerified) {
-    return res.status(400).json({ message: "OTP not verified" });
+  if (!user) {
+    throw new NotFoundError("User not found");
   }
 
-  user.password = await bcrypt.hash(newPassword, 12);
-  user.isOTPVerified = false;
+  if (user.isVerified) {
+    throw new ValidationError("User is already verified");
+  }
+
+  // Generate new OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.otp = otp;
+  user.otpExpiry = Date.now() + 600000; // 10 minutes
   await user.save();
 
-  res.status(200).json({ message: "Password successfully reset" });
-};
+  logger.info({
+    message: "OTP resent",
+    email: user.email,
+    userId: user._id
+  });
 
-export const changePassword = async (req, res) => {
-  console.log("body", req.body);
+  await sendOTPEmail(user.name, email, `<h3>Your OTP: ${otp}</h3>`);
+  
+  res.status(200).json({
+    success: true,
+    message: "OTP resent to email"
+  });
+});
+
+// User login
+export const login = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+
+  // Find user with password
+  const user = await User.findByEmail(email);
+
+  if (!user) {
+    throw new AuthenticationError("Invalid email or password");
+  }
+
+  // Check if user is verified
+  if (!user.isVerified) {
+    // Delete unverified user
+    await User.findByIdAndDelete(user._id);
+    logger.info({
+      message: "Deleted unverified user during login attempt",
+      email: email
+    });
+    throw new AuthenticationError("Please verify your email first");
+  }
+
+  // Check if account is locked
+  if (user.isLocked()) {
+    throw new AuthenticationError("Account is temporarily locked. Please try again later");
+  }
+
+  // Verify password
+  const isPasswordValid = await user.comparePassword(password);
+  
+  if (!isPasswordValid) {
+    // Increment login attempts
+    await user.incLoginAttempts();
+    throw new AuthenticationError("Invalid email or password");
+  }
+
+  // Reset login attempts on successful login
+  await user.resetLoginAttempts();
+
+  // Generate token
+  const token = generateToken(user);
+
+  logger.info({
+    message: "User logged in successfully",
+    email: user.email,
+    userId: user._id
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Login successful",
+    data: {
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        preferences: user.preferences
+      }
+    }
+  });
+});
+
+// Request password reset
+export const requestPasswordReset = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  
+  const user = await User.findByEmailForReset(email);
+  
+  if (!user) {
+    // Don't reveal if user exists or not for security
+    return res.status(200).json({
+      success: true,
+      message: "If an account with that email exists, a reset link has been sent"
+    });
+  }
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  user.resetToken = otp;
+  user.resetTokenExpiry = otpExpiry;
+  await user.save();
+
+  logger.info({
+    message: "Password reset requested",
+    email: user.email,
+    userId: user._id
+  });
+
+  await sendOTPEmail(user.name, email, `Your password reset OTP is: ${otp}`);
+
+  res.status(200).json({
+    success: true,
+    message: "If an account with that email exists, a reset link has been sent"
+  });
+});
+
+// Reset password
+export const resetPassword = asyncHandler(async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  
+  const user = await User.findByEmailForReset(email);
+
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+
+  if (user.resetToken !== otp) {
+    throw new ValidationError("Invalid reset token");
+  }
+
+  if (user.resetTokenExpiry < Date.now()) {
+    throw new ValidationError("Reset token has expired");
+  }
+
+  // Update password
+  user.password = newPassword;
+  user.resetToken = null;
+  user.resetTokenExpiry = null;
+  await user.save();
+
+  logger.info({
+    message: "Password reset successfully",
+    email: user.email,
+    userId: user._id
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Password reset successfully"
+  });
+});
+
+// Change password (authenticated user)
+export const changePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword } = req.body;
+  const userId = req.userId;
 
-  const token = req.headers.authorization?.split(" ")[1];
-  const { id } = jwt.verify(token, process.env.jwt_SECRET_KEY);
-  const user = await User.findById(id);
-  const match = await bcrypt.compare(currentPassword, user.password);
-  if (!match)
-    return res.status(400).json({ message: "Wrong current password" });
-  user.password = await bcrypt.hash(newPassword, 12);
+  const user = await User.findById(userId).select('+password');
+  
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+
+  // Verify current password
+  const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+  
+  if (!isCurrentPasswordValid) {
+    throw new ValidationError("Current password is incorrect");
+  }
+
+  // Update password
+  user.password = newPassword;
   await user.save();
-  res.status(200).json({ message: "Password changed" });
-};
 
+  logger.info({
+    message: "Password changed successfully",
+    userId: user._id
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Password changed successfully"
+  });
+});
+
+// Get user profile
+export const getProfile = asyncHandler(async (req, res) => {
+  const userId = req.userId;
+
+  const user = await User.findById(userId)
+    .select('-password -otp -otpExpiry -resetToken -resetTokenExpiry');
+
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Profile fetched successfully",
+    data: { user }
+  });
+});
+
+// Update user profile
+export const updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const { name, phone, avatar, preferences, addresses } = req.body;
+
+  const user = await User.findById(userId);
+  
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+
+  // Update allowed fields
+  if (name) user.name = name;
+  if (phone) user.phone = phone;
+  if (avatar) user.avatar = avatar;
+  if (preferences) user.preferences = { ...user.preferences, ...preferences };
+  if (addresses) user.addresses = addresses;
+
+  await user.save();
+
+  logger.info({
+    message: "User profile updated",
+    userId: user._id
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Profile updated successfully",
+    data: { user }
+  });
+});
+
+// Get user statistics (Admin only)
+export const getUserStats = asyncHandler(async (req, res) => {
+  const stats = await User.getStats();
+
+  res.status(200).json({
+    success: true,
+    message: "User statistics fetched successfully",
+    data: { stats }
+  });
+});
+
+// Create default admin (for development)
 export const createDefaultAdmin = async () => {
   try {
     const adminEmail = "ammarailyas361@gmail.com";
 
-    const existingAdmin = await User.findOne({ email: adminEmail });
+    const existingAdmin = await User.findByEmail(adminEmail);
     if (existingAdmin) {
-      console.log("Admin already exists");
+      logger.info("Default admin already exists");
       return;
     }
-
-    const hashedPassword = await bcrypt.hash("Admin@123", 10);
 
     const adminUser = new User({
       name: "Ammara Ilyas",
       email: adminEmail,
-      password: hashedPassword,
+      password: "Admin@123",
       role: "admin",
       isVerified: true,
+      phone: "+1234567890"
     });
 
     await adminUser.save();
-    console.log("Default admin created");
+    logger.info("Default admin created successfully");
   } catch (error) {
-    console.error("Error creating admin:", error);
+    logger.error("Error creating default admin:", error);
   }
 };
