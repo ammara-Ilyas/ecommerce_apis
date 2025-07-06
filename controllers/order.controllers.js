@@ -49,7 +49,6 @@ export const createCheckoutSession = async (req, res) => {
     });
     // console.log("session", session);
 
-    // Save order in DB
     await Order.create({
       userId: userId,
       userEmail: email,
@@ -60,7 +59,7 @@ export const createCheckoutSession = async (req, res) => {
       amount,
       stripeSessionId: session.id,
       isPaid: false,
-      status: "pending", // default status
+      status: "pending", 
     });
 
     // Send checkout URL to frontend
@@ -71,46 +70,6 @@ export const createCheckoutSession = async (req, res) => {
   }
 };
 
-// export const createPaymentIntent = async (req, res) => {
-//   try {
-//     const { amount, email, name, cartItems, userId } = req.body;
-
-//     if (!amount || isNaN(amount)) {
-//       return res.status(400).json({ error: "Invalid amount received" });
-//     }
-
-//     const amountInCents = Math.round(amount * 100);
-
-//     // Optionally: create an order in DB and get orderId
-//     const order = await Order.create({
-//       userId,
-//       userEmail: email,
-//       userName: name,
-//       cart: cartItems,
-//       amount,
-//       isPaid: false,
-//       status: "pending",
-//     });
-
-//     const paymentIntent = await stripe.paymentIntents.create({
-//       amount: amountInCents,
-//       currency: "usd",
-//       metadata: {
-//         email,
-//         name,
-//         userId,
-//         orderId: order._id.toString(), // ✅ Only small value
-//       },
-//     });
-
-//     return res.status(200).json({
-//       clientSecret: paymentIntent.client_secret,
-//     });
-//   } catch (error) {
-//     console.error("Error creating PaymentIntent:", error.message);
-//     return res.status(500).json({ error: "Something went wrong" });
-//   }
-// };
 
 export const verifyPayment = async (req, res) => {
   try {
@@ -140,40 +99,22 @@ export const verifyPayment = async (req, res) => {
     });
   }
 };
-export const handleRefund = (req, res) => {
-  return res.status(403).json({ error: "Refunds are not allowed." });
+export const handleRefund = async (req, res) => {
+  try {
+    const settings = await AdminSettings.findOne();
+    const message = settings?.refundMessage || "Refunds are currently not available.";
+    
+    return res.status(403).json({ 
+      error: "Refunds are not allowed.",
+      message: message
+    });
+  } catch (error) {
+    return res.status(403).json({ 
+      error: "Refunds are not allowed.",
+      message: "Refunds are currently disabled."
+    });
+  }
 };
-// export const refundOrder = async (req, res) => {
-//   try {
-//     const { session_id } = req.body;
-
-//     const settings = await AdminSettings.findOne();
-//     if (!settings?.refundEnabled) {
-//       return res
-//         .status(403)
-//         .json({ message: "Refunds are currently disabled by admin." });
-//     }
-
-//     const order = await Order.findOne({ stripeSessionId: session_id });
-
-//     if (!order || !order.isPaid || order.isRefunded) {
-//       return res.status(400).json({ message: "Invalid refund request." });
-//     }
-
-//     const refund = await stripe.refunds.create({
-//       payment_intent: (
-//         await stripe.checkout.sessions.retrieve(session_id)
-//       ).payment_intent,
-//     });
-
-//     order.isRefunded = true;
-//     await order.save();
-
-//     res.json({ message: "Refund successful", refund });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
 
 export const markAsDelivered = async (req, res) => {
   try {
